@@ -18,12 +18,10 @@ class FiniteDifferenceSolver:
     scale_diffusion = scale_space**2. / scale_time  
     scale_charge = scale_space**2 / scale_time**2 / scale_voltage  # can be derived from thermal voltage V_T = k_B*t/e
     scale_current = scale_charge / scale_time
-    # scale_current = 1.e2  # 10 milliampere
-    #scale_charge = 1. *scale_time *scale_current  # unit charge is unit_current * unit_time
     scale_resistance = scale_space**2/scale_time**3/scale_current**2  # 1/10^18 OHM
     scale_capacitance = scale_charge / scale_voltage #scale_current**2 * scale_time**4 / scale_space**2
     # scale_mass = 1. # maps kg -> not needed
-    # scale_temperature = 1.
+    # scale_temperature = 1.  # effectively no scaling just dimensionless
     
     # scaled constants
     const_q = const_e * scale_charge
@@ -53,7 +51,8 @@ class FiniteDifferenceSolver:
         t,  # points on grid in time
         x,  # points on grid in space
         a,  # radius of cylindersegment along x
-        file_name = False  # if file-name if provided dependent varibles get saved every 0.05 ms
+        file_name = False,  # if file-name if provided dependent varibles get saved every 0.05 ms
+        write_interval = 0.00001,
         ):
         
         # grid scale
@@ -90,10 +89,6 @@ class FiniteDifferenceSolver:
         self.c_K = np.full((self.nx), self.const_c_K_rest)  # sodium concentration
         self.c_Cl = np.full((self.nx), self.const_c_Cl_rest)  # sodium concentration
         
-        # Neumann boundary at x=0
-        # Dirichlet boundary at x=x_max
-        # are satisfied automaticially by initialization of variables
-        
         # initialize other variables that vary over time
         self.r_e_Na = np.zeros((self.nx)) # intracellular electrical resistance [r_e] = Ohm m
         self.r_e_K  = np.zeros((self.nx)) # intracellular electrical resistance [r_e] = Ohm m
@@ -102,24 +97,31 @@ class FiniteDifferenceSolver:
         # self.phi_nernst_Na = np.zeros((self.nx))  # nernst potential for sodium
         # self.phi_nernst_K  = np.zeros((self.nx))  # nernst potential for potassium
         # self.phi_nernst_Cl = np.zeros((self.nx))  # nernst potential for chloride
-        self.i_syn_AMPA = np.zeros((self.nx))  # synpatic AMPA-current
-        # self.i_m_Na = np.zeros((self.nx))  # membrane leakage current of sodium
-        # self.i_m_K  = np.zeros((self.nx))  # membrane leakage current of potassium
-        # self.i_m_Cl = np.zeros((self.nx))  # membrane leakage current of chloride
-        self.i_m = np.zeros((self.nx))  # total membrane leakage current
+        # self.i_syn_AMPA = np.zeros((self.nx))  # synpatic AMPA-current
         
         # compute initial values of r_e_Na, r_e_Cl, r_e_K, r_e along x
         self.update_electrical_resistance()
         # compute initial value of synaptic AMPA current along x
-        self.update_synaptic_AMPA_current()
-        
+        #self.update_synaptic_AMPA_current()
         # compute inital values of phi_nernst_Na, phi_nernst_K, phi_Nernst_Cl along x
         ##self.update_nernst_potentials()
-        # compute inital values of i_m_Na, i_m_K, i_m_Cl, i_m (membrane leakage current) along x
-        ##self.update_membrane_current()
+        
+        # apply boundary conditions
+        # ATTENTION appliy boundary conditions after all other variable are computed for the current time step
+        # Neumann boundary at x=0 to model input current
+        # Dirichlet boundary at x=x_max to model large reservoir in dendrites
+        self.current_input = 15.e-12 * self.scale_current
+        self.apply_neumann_boundary(self.phi, dydx=self.const_electric_input_current(self.current_input))
+        self.apply_neumann_boundary(self.c_Na, dydx=self.const_sodium_input_current(self.current_input))
+        self.apply_neumann_boundary(self.c_K, dydx=0.,)
+        self.apply_neumann_boundary(self.c_Cl, dydx=0.,)
+        self.apply_dirichlet_boundary(self.phi, self.const_phi_rest)
+        self.apply_dirichlet_boundary(self.c_Na, self.const_c_Na_rest)
+        self.apply_dirichlet_boundary(self.c_K, self.const_c_K_rest)
+        self.apply_dirichlet_boundary(self.c_Cl, self.const_c_Cl_rest)
         
         self.file_name = file_name
-        self.write_interval = 0.00001
+        self.write_interval = write_interval
         if self.file_name!=False :
             self.results = {'data':{}, 'params':{}}
             self.write_delta_t_i = int((self.write_interval * self.scale_time) / self.delta_t)
@@ -137,6 +139,27 @@ class FiniteDifferenceSolver:
             print('I_m: ', self.i_m / self.scale_current)
             print('r_e: [Ohm m]', self.r_e/self.scale_resistance/self.scale_space)
         
+    def apply_neumann_boundary(self, variable, dydx):
+        """
+        apply neumann boundary condition on potential or concentration (spatial derivative)
+        neumann boundary conditions are applied at the left side (x=0) where synapse is located to model input current
+        variable: reference to dependent variable on which to apply bnd (phi, c_i)
+        dydx: value of derivativ at boundary (dydx=0 means reflecting or no-flux boundary)
+        return: None
+        """       
+        variable[0] = variable[1] - dydx
+
+    
+    def apply_dirichlet_boundary(self, variable, yD):
+        """
+        apply dirichlet boundary condition on potential or concentration variable
+        dirichlet boundary conditions are applied on the right side (x=xmax) where dendrite is located
+        variable: reference to dependent variable on which to apply bnd (phi, c_i)
+        yD: value of variable at boundary
+        return: None
+        """
+        variable[-1] = yD
+    
     def write_results(self):
         print('Writing results at {t} ms'.format( t=(self.t[self.t_i]/self.scale_time*1000) ))
         self.results['data'].update(
@@ -149,6 +172,7 @@ class FiniteDifferenceSolver:
                 }
             }
             )
+
     def save_results(self):
         self.results['params'].update({'t': self.t/self.scale_time})
         self.results['params'].update({'x': self.x/self.scale_space})
@@ -170,47 +194,6 @@ class FiniteDifferenceSolver:
         self.r_e_Cl = self.const_k * self.const_T / self.const_q**2 / (
             self.const_D_Cl * self.const_z_Cl**2 * self.c_Cl)
         self.r_e = 1./ ( 1./self.r_e_Na + 1./self.r_e_K + 1./self.r_e_Cl )
-        
-    def update_membrane_current(self):
-        """
-        ohmic membrane current
-        drivng voltage is the difference between the current membrane potential and the
-        current resting potential of the different ions (nernst potentials)
-        """
-        self.i_m_Na = (self.phi - self.phi_nernst_Na) / self.const_r_m_Na
-        self.i_m_K  = (self.phi - self.phi_nernst_K) / self.const_r_m_K
-        self.i_m_Cl = (self.phi - self.phi_nernst_Cl) / self.const_r_m_Cl
-        self.i_m = self.i_m_Na + self.i_m_K + self.i_m_Cl
-        
-    def update_nernst_potentials(self):
-        """
-        compute resting potential. This is the nernst-potential of the 
-        see eqs: 5.1 & 5.4 in dyan & abbott
-        """
-        V_T = self.const_k * self.const_T / self.const_q
-        self.phi_nernst_Na = -V_T / self.const_z_Na * np.log(self.c_Na / self.const_c_Na_extracell)
-        self.phi_nernst_K  = -V_T / self.const_z_K  * np.log(self.c_K  / self.const_c_K_extracell )
-        self.phi_nernst_Cl = -V_T / self.const_z_Cl * np.log(self.c_Cl / self.const_c_Cl_extracell)
-                
-    def update_synaptic_AMPA_current(self, duration=0.01, ampl=15.e-12):
-        """
-        AMPA current is assumed to be purely sodium current
-        AMPA enters at left side x=0 at segment with index 1
-        (index 0 segment is there to implement boundary conditions)
-        simply model with constant synaptic conductivity
-        
-        duration: lenght synapse opening in seconds
-        ampl: current aplitude at 100 mV driving potential in Ampere
-        """
-        input_segments = 1
-        current_time = self.t[self.t_i]
-        segment_surface = 2. * np.pi * self.a[1:input_segments+1] * (self.x[input_segments+1] - self.x[1])
-        current_density = ampl*self.scale_current/segment_surface
-        
-        if current_time <= (duration*self.scale_time):
-            self.i_syn_AMPA[1:input_segments+1] = current_density
-        else: 
-            self.i_syn_AMPA[:] = 0.
         
     def g_k(self, ion_species):
         """
@@ -244,12 +227,6 @@ class FiniteDifferenceSolver:
         
     def gamma(self):
         return 1. / ( 2. * self.a * self.const_c_m)
-        
-    def alpha(self):
-        """
-        multiplicative factor of synapic current of voltage equation
-        """
-        return np.full((self.nx), 1. / self.const_c_m)
     
     def delta_k(self, ion_species):
         """
@@ -264,17 +241,6 @@ class FiniteDifferenceSolver:
         else: 
             raise AssertionError( 'invalid ion_species argument in method delta_k' )
         return 1. / (np.square(self.a) * z * self.const_q)
-        
-    def beta_k(self, ion_species):
-        if ion_species == 'Na':
-            z = self.const_z_Na
-        elif ion_species == 'K':
-            z = self.const_z_K
-        elif ion_species == 'Cl':
-            z = self.const_z_Cl
-        else: 
-            raise AssertionError( 'invalid ion_species argument in method delta_k' )
-        return 2. / (self.a * z * self.const_q)
         
     def d2fdx2(self, var, coeff):
         """
@@ -311,8 +277,13 @@ class FiniteDifferenceSolver:
         # update concentrations and voltage from t_i to t_{i+1}
         if method == 'leapfrog':
             self.leapfrog()
-        elif method == 'crank-nicolson':
-            self.crank_nicolson()
+        elif method == 'implicit':
+            pass
+            # TODO implement implicit solver to increase spatial reoslution
+        
+        # update boundary conditions
+        if self.t[self.t_i] >= (0.01*self.scale_time):
+            self.current_input= 0.
         
         # update time from t=t_i to t=t_{i+1}
         self.t_i += 1   
@@ -321,7 +292,6 @@ class FiniteDifferenceSolver:
         if self.file_name:
             if self.t_i % self.write_delta_t_i == 0:
                 self.write_results()
-            
         
     def leapfrog(self):
         """
@@ -336,18 +306,12 @@ class FiniteDifferenceSolver:
             self.gamma()[1:-1] * self.d2fdx2(self.c_K , self.h_k('K' ))
             +
             self.gamma()[1:-1] * self.d2fdx2(self.c_Cl, self.h_k('Cl'))
-            + 
-            self.alpha()[1:-1] * self.i_syn_AMPA[1:-1]
             ) 
             
-        
-        
         delta_c_Na = (
             self.delta_k('Na')[1:-1] * self.d2fdx2(self.phi, self.g_k('Na'))
             + 
             self.delta_k('Na')[1:-1] * self.d2fdx2(self.c_Na, self.h_k('Na'))
-            +
-            self.beta_k('Na')[1:-1] * self.i_syn_AMPA[1:-1]
             )
             
         delta_c_K = (
@@ -361,35 +325,51 @@ class FiniteDifferenceSolver:
             + 
             self.delta_k('Cl')[1:-1] * self.d2fdx2(self.c_Cl, self.h_k('Cl'))
             )
-        
-        #print('concentration delta q: ', (delta_c_Na + delta_c_K - delta_c_Cl) * self.const_q *np.square(self.a[1:-1]))
-        #print('capactiance delta q: ', (delta_phi * 2. *self.a[1:-1] *self.const_c_m))
-        
+
         # update dependent variables t+1
         self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi
         self.c_Na[1:-1] = self.c_Na[1:-1] + self.delta_t * delta_c_Na
         self.c_K[1:-1]  = self.c_K[1:-1]  + self.delta_t * delta_c_K
         self.c_Cl[1:-1] = self.c_Cl[1:-1] + self.delta_t * delta_c_Cl
         
-        # boundary contidions
-        # dPhi/dx = 0 at x=0 (Neumann boundary)
-        # Phi(x) = Phi_rest at x=x_max (Dirichlet boundary)
-        self.phi[0] = self.phi[1]
-        self.c_Na[0] = self.c_Na[1]
-        self.c_K[0] = self.c_K[1]
-        self.c_Cl[0] = self.c_Cl[1]
-        self.phi[-1] = self.const_phi_rest
-        self.c_Na[-1] = self.const_c_Na_rest
-        self.c_K[-1] = self.const_c_K_rest
-        self.c_Cl[-1] = self.const_c_Cl_rest
-      
-        
         # update other variables to t+1
         self.update_electrical_resistance()
-        ## self.update_nernst_potentials()
-        self.update_synaptic_AMPA_current()
-        ## self.update_membrane_current()
         
-        
+        # boundary contidions
+        self.apply_neumann_boundary(self.phi, dydx=self.const_electric_input_current(self.current_input))
+        self.apply_neumann_boundary(self.c_Na, dydx=self.const_sodium_input_current(self.current_input))
+        self.apply_neumann_boundary(self.c_K, dydx=0.,)
+        self.apply_neumann_boundary(self.c_Cl, dydx=0.,)
+        self.apply_dirichlet_boundary(self.phi, self.const_phi_rest)
+        self.apply_dirichlet_boundary(self.c_Na, self.const_c_Na_rest)
+        self.apply_dirichlet_boundary(self.c_K, self.const_c_K_rest)
+        self.apply_dirichlet_boundary(self.c_Cl, self.const_c_Cl_rest)
     
+    def const_electric_input_current(self, current_ampl):
+        """
+        map a const input current to neumann boundary conditiions for the electrical potential
+        current_ampl: current amplitude in Ampere (e.g. current_ampl=10.e-12 for 10 picoamps)
+        """
+        dPhi_dx = - current_ampl * self.r_e[1] / np.pi / self.a[1]**2
+        return dPhi_dx
+        
+    def const_sodium_input_current(self, current_ampl):
+        """
+        map const input current to neumann boundary conditions for sodium concentration
+        current_ampl: current amplitude in Ampere (e.g. current_ampl=10.e-12 for 10 picoamps)
+        """
+        dcNa_dx = -1. * current_ampl / self.const_D_Na / self.const_q / self.const_z_Na / np.pi / self.a[1]**2
+        return dcNa_dx
+        
+    #################################
+    # TODO voltage and concentration dependent input
+    def update_nernst_potentials(self):
+        """
+        compute resting potential. This is the nernst-potential of the 
+        see eqs: 5.1 & 5.4 in dyan & abbott
+        """
+        V_T = self.const_k * self.const_T / self.const_q
+        self.phi_nernst_Na = -V_T / self.const_z_Na * np.log(self.c_Na / self.const_c_Na_extracell)
+        self.phi_nernst_K  = -V_T / self.const_z_K  * np.log(self.c_K  / self.const_c_K_extracell )
+        self.phi_nernst_Cl = -V_T / self.const_z_Cl * np.log(self.c_Cl / self.const_c_Cl_extracell)
     
