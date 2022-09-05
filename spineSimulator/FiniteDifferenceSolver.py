@@ -99,13 +99,13 @@ class FiniteDifferenceSolver:
         self.r_e_K  = np.zeros((self.nx)) # intracellular electrical resistance [r_e] = Ohm m
         self.r_e_Cl = np.zeros((self.nx)) # intracellular electrical resistance [r_e] = Ohm m
         self.r_e = np.zeros((self.nx)) # intracellular electrical resistance [r_e] = Ohm m
-        self.phi_nernst_Na = np.zeros((self.nx))  # nernst potential for sodium
-        self.phi_nernst_K  = np.zeros((self.nx))  # nernst potential for potassium
-        self.phi_nernst_Cl = np.zeros((self.nx))  # nernst potential for chloride
+        # self.phi_nernst_Na = np.zeros((self.nx))  # nernst potential for sodium
+        # self.phi_nernst_K  = np.zeros((self.nx))  # nernst potential for potassium
+        # self.phi_nernst_Cl = np.zeros((self.nx))  # nernst potential for chloride
         self.i_syn_AMPA = np.zeros((self.nx))  # synpatic AMPA-current
-        self.i_m_Na = np.zeros((self.nx))  # membrane leakage current of sodium
-        self.i_m_K  = np.zeros((self.nx))  # membrane leakage current of potassium
-        self.i_m_Cl = np.zeros((self.nx))  # membrane leakage current of chloride
+        # self.i_m_Na = np.zeros((self.nx))  # membrane leakage current of sodium
+        # self.i_m_K  = np.zeros((self.nx))  # membrane leakage current of potassium
+        # self.i_m_Cl = np.zeros((self.nx))  # membrane leakage current of chloride
         self.i_m = np.zeros((self.nx))  # total membrane leakage current
         
         # compute initial values of r_e_Na, r_e_Cl, r_e_K, r_e along x
