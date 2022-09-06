@@ -29,8 +29,8 @@ class FiniteDifferenceSolver:
     
     # spine parameters, all set in SI-units and then made unit-less by scaling factors
     const_D_Na = 0.5000e-9 * scale_diffusion # Diffusion Sodium [D_Na] = m^2 s^-1
-    const_D_K = 0.5000e-9 * scale_diffusion  # Diffusion potassium [D_K] = m^2 s^-1
-    const_D_Cl = 0.5000e-9 * scale_diffusion  # Diffusion chloride [D_Cl] = m^2 s^-1
+    const_D_K = 1.000e-9 * scale_diffusion  # Diffusion potassium [D_K] = m^2 s^-1
+    const_D_Cl = 1.0000e-9 * scale_diffusion  # Diffusion chloride [D_Cl] = m^2 s^-1
     const_r_m_Na = 1.* scale_resistance * scale_space**2 # membrane reistance for sodium current[r_m] = MOhm mm^2 = Ohm m^2
     const_r_m_K = 1.* scale_resistance * scale_space**2 # membrane reistance for potassium current [r_m] = MOhm mm^2 = Ohm m^2
     const_r_m_Cl = 1.* scale_resistance * scale_space**2 # membrane reistance for chloride current [r_m] = MOhm mm^2 = Ohm m^2
@@ -46,6 +46,9 @@ class FiniteDifferenceSolver:
     # for ion concentrations see: https://bionumbers.hms.harvard.edu/files/Comparison%20of%20ion%20concentrations%20inside%20and%20outside%20a%20typical%20mammalian%20cell.jpg
     # for membrane capacitance see: https://bionumbers.hms.harvard.edu/bionumber.aspx?&id=110759
     # membrane resistance see dyan & abbott p. 207
+    
+    # driving voltage for constant input current
+    const_driving_voltage = 0.1 * scale_voltage
     
     def __init__(self,
         t,  # points on grid in time, has to start with 0
@@ -371,7 +374,7 @@ class FiniteDifferenceSolver:
         return constant input current for a driving voltage of 100mV
         current = 100mV * self.input_conductance
         """
-        driving_voltage = 0.1 * self.scale_voltage
+        driving_voltage = self.const_driving_voltage
         current = driving_voltage * self.input_conductance # input current
         return current
     
