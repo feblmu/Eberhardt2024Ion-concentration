@@ -30,8 +30,8 @@ a[nh+nhnj+nn+nndj: nh+nhnj+nn+nndj+nd] = ad
 a[nh:nh+nhnj]= np.linspace(ah, an, nhnj+2, endpoint=True)[1:-1]
 a[nh+nhnj+nn : nh+nhnj+nn+nndj] = np.linspace(an, ad, nndj+2, endpoint=True)[1:-1]
 
-results_file = './../../simulation_results/test_run_05092022.pcl'
-write_interval = 1.e-7
+results_file = './../simulation_results/test_run_05092022.pcl'
+write_interval = 1.e-5
 spine = FiniteDifferenceSolver.FiniteDifferenceSolver(t,x,a,results_file, write_interval=write_interval)
 start = time.time()
 spine.solve()
