@@ -9,7 +9,7 @@ import dbm.dumb as dbm
 
 
 def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195]):
-    results = load_resuls(file_name)
+    results = load_results(file_name)
     t = results['t']
     x = results['x']
     phi = results['phi']
@@ -55,7 +55,7 @@ def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195])
     ax1.legend(fontsize=8, loc=(.6,.6))
     plt.show()
 
-def load_resuls(file_name):
+def load_results(file_name):
     f = dbm.open('./../../simulation_results/' + file_name, 'r')
     t = np.frombuffer(f['t'])
     results = {
@@ -74,7 +74,7 @@ def load_resuls(file_name):
 
 
 def figure_head_overview(file_name):
-    results = load_resuls(file_name)
+    results = load_results(file_name)
     t = results['t']
     phi = results['phi']
     c_Na = results['c_Na']
@@ -121,7 +121,7 @@ def figure_head_overview(file_name):
 def ax_electroneutrality_head(fig, pos, file_name):
     ax = fig.add_axes(pos)
     
-    results = load_resuls(file_name)
+    results = load_results(file_name)
     t = results['t']
     phi = results['phi']
     c_Na = results['c_Na']

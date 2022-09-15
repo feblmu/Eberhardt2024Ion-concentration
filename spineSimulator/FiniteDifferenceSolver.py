@@ -1,6 +1,6 @@
 import numpy as np
 import dbm.dumb as dbm
-from constants import parameter_sets
+from constants import parameter_sets, scalings
 
 class FiniteDifferenceSolver:
 
@@ -13,11 +13,16 @@ class FiniteDifferenceSolver:
         file_name = False,  # if file-name if provided dependent varibles get saved every 0.05 ms
         write_interval = 0.00001,
         parameter_set = 'standard',
+        scaling = 'standard',
         ):
         
-        # load parmeters for simulation   
+        # load parmeters for simulation and scale them
         self.parameter_set = parameter_set
-        self.load_parameters(parameter_sets[self.parameter_set])
+        self.scaling = scaling 
+        self.load_parameters(
+            parameter_sets[self.parameter_set],
+            scalings[self.scaling]    
+        )
         
         # TODO: improve t&x argumnets in init or shift automatically
         if t[0] != 0. or x[0] != 0.:
@@ -127,7 +132,7 @@ class FiniteDifferenceSolver:
             print('I_m: ', self.i_m / self.scale_current)
             print('r_e: [Ohm m]', self.r_e/self.scale_resistance/self.scale_space)
     
-    def load_parameters(self, constants):
+    def load_parameters(self, constants, scale):
         """
         constants: dict with all constants and parameters. Can be called with a different dict to updated parameters during a simulation. Or to load results from a previous simulation
         """
@@ -142,43 +147,44 @@ class FiniteDifferenceSolver:
         self.const_z_background = constants['const_z_background']  # charge number of background concentrations
 
         # multiplicative scaling factors to make equations dimensionless
-        self.scale_voltage = constants['scale_voltage']  
-        self.scale_space = constants['scale_space'] 
-        self.scale_time = constants['scale_time'] 
-        self.scale_concentration = constants['scale_concentration']
-        self.scale_diffusion = constants['scale_diffusion']
-        self.scale_charge = constants['scale_charge']
-        self.scale_current = constants['scale_current']
-        self.scale_resistance = constants['scale_resistance']
-        self.scale_capacitance = constants['scale_capacitance']
+        self.scale_voltage = scale['scale_voltage']  
+        self.scale_space = scale['scale_space'] 
+        self.scale_time = scale['scale_time'] 
+        self.scale_concentration = scale['scale_concentration']
+        self.scale_diffusion = scale['scale_diffusion']
+        self.scale_charge = scale['scale_charge']
+        self.scale_current = scale['scale_current']
+        self.scale_resistance = scale['scale_resistance']
+        self.scale_capacitance = scale['scale_capacitance']
 
         # scaled constants
-        self.const_q = constants['const_q']  # scaled elementary charge
-        self.const_k = constants['const_k']  # scaled boltzmann constant
+        self.const_q = self.const_e * self.scale_charge  # scaled elementary charge
+        self.const_k = self.const_k_B / self.scale_time**2. * self.scale_space**2.  # scaled boltzmann constant
 
         # spine parameters, all set in SI-units and then made unit-less by scaling factors
-        self.const_D_Na = constants['const_D_Na'] # Diffusion Sodium 
-        self.const_D_K = constants['const_D_K']  # Diffusion potassium 
-        self.const_D_Cl = constants['const_D_Cl']  # Diffusion chloride  
-        # self.const_r_m_Na = constants['const_r_m_Na'] # membrane resistance for sodium current
-        # self.const_r_m_K = constants['const_r_m_K'] # membrane reistance for potassium current 
-        # self.const_r_m_Cl = constants['const_r_m_Cl'] # membrane reistance for chloride current 
-        self.const_c_m = constants['const_c_m'] # membrane capacitance 
+        self.const_D_Na = constants['const_D_Na'] * self.scale_diffusion # Diffusion Sodium 
+        self.const_D_K = constants['const_D_K'] * self.scale_diffusion  # Diffusion potassium 
+        self.const_D_Cl = constants['const_D_Cl'] * self.scale_diffusion  # Diffusion chloride  
+        # self.const_r_m_Na = constants['const_r_m_Na'] * scale_resistance * scale_space**2 # membrane resistance for sodium current
+        # self.const_r_m_K = constants['const_r_m_K'] * scale_resistance * scale_space**2 # membrane reistance for potassium current 
+        # self.const_r_m_Cl = constants['const_r_m_Cl'] * scale_resistance * scale_space**2 # membrane reistance for chloride current 
+        self.const_c_m = constants['const_c_m'] * self.scale_capacitance/self.scale_space**2 # membrane capacitance 
         self.const_T = constants['const_T']  # Temperature 
-        self.const_phi_rest = constants['const_phi_rest']  # resting membrane potential
-        self.const_driving_voltage = constants['const_driving_voltage'] # driving voltage for constant input current
-        self.const_c_Na_extracell = constants['const_c_Na_extracell']  # mmol 
-        self.const_c_K_extracell =  constants['const_c_K_extracell'] # mmol 
-        self.const_c_Cl_extracell = constants['const_c_Cl_extracell'] # mmol 
-        self.const_c_Na_rest = constants['const_c_Na_rest']  # intracell. sodium concentration at rest
-        self.const_c_K_rest = constants['const_c_K_rest']  # intracell. sodium concentration at rest
-        self.const_c_Cl_rest = constants['const_c_Cl_rest']  # intracell. sodium concentration at rest   
+        self.const_phi_rest = constants['const_phi_rest'] * self.scale_voltage  # resting membrane potential
+        self.const_driving_voltage = constants['const_driving_voltage'] * self.scale_voltage # driving voltage for constant input current
+        self.const_c_Na_extracell = constants['const_c_Na_extracell'] * self.scale_concentration  # mmol 
+        self.const_c_K_extracell =  constants['const_c_K_extracell'] * self.scale_concentration # mmol 
+        self.const_c_Cl_extracell = constants['const_c_Cl_extracell'] * self.scale_concentration # mmol 
+        self.const_c_Na_rest = constants['const_c_Na_rest'] * self.scale_concentration  # intracell. sodium concentration at rest
+        self.const_c_K_rest = constants['const_c_K_rest'] * self.scale_concentration  # intracell. sodium concentration at rest
+        self.const_c_Cl_rest = constants['const_c_Cl_rest'] * self.scale_concentration  # intracell. sodium concentration at rest   
     
     def apply_boundary_conditions(self,):
         """
         apply all boundary conditions
         """
-        self.apply_neumann_boundary(self.phi, dydx=self.electric_potential_neumann_boundary())
+        #self.apply_neumann_boundary(self.phi, dydx=self.electric_potential_neumann_boundary())
+        self.apply_neumann_boundary(self.phi, dydx=0.) # has to be 0 to prevent K+ and Cl- synaptic currents
         self.apply_neumann_boundary(self.c_Na, dydx=self.sodium_concentration_neumann_boundary())
         self.apply_neumann_boundary(self.c_K, dydx=0.,)
         self.apply_neumann_boundary(self.c_Cl, dydx=0.,)
@@ -195,7 +201,7 @@ class FiniteDifferenceSolver:
         dydx: value of derivativ at boundary (dydx=0 means reflecting or no-flux boundary)
         return: None
         """       
-        variable[0] = variable[1] - dydx
+        variable[0] = variable[1] - dydx * self.delta_x
     
     def apply_dirichlet_boundary(self, variable, yD):
         """
@@ -308,9 +314,7 @@ class FiniteDifferenceSolver:
         """
         implementation of explicit solver
         """
-        #import time
-        #t1 = time.time()
-        """
+        
         delta_phi = (
             self.gamma()[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e))
             + 
@@ -320,10 +324,6 @@ class FiniteDifferenceSolver:
             +
             self.gamma()[1:-1] * self.d2fdx2(self.c_Cl, self.h_k(self.const_z_Cl * self.const_D_Cl))
             ) 
-            
-        self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi     
-        """
-
 
         delta_c_Na = (
             self.delta_k(self.const_z_Na)[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e_Na))
@@ -348,13 +348,15 @@ class FiniteDifferenceSolver:
         self.c_K[1:-1]  = self.c_K[1:-1]  + self.delta_t * delta_c_K
         self.c_Cl[1:-1] = self.c_Cl[1:-1] + self.delta_t * delta_c_Cl
         
+        self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi    
+        """
         self.phi = self.const_q * (
             self.const_z_background * self.c_background + 
             self.const_z_Na * self.c_Na +
             self.const_z_K * self.c_K + 
             self.const_z_Cl * self.c_Cl
         ) / self.const_c_m * self.a / 2.
-
+        """
         # update other variables to t+1
         self.update_electrical_resistance()
 

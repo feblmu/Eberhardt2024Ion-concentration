@@ -41,50 +41,52 @@ const_c_Cl_rest = 10.  # intracell. sodium concentration at rest
 # for membrane capacitance see: https://bionumbers.hms.harvard.edu/bionumber.aspx?&id:110759
 # membrane resistance see dyan & abbott p. 207
 
+scaling1 = {  
+    # multiplicative scaling factors to make equations dimensionless
+    'scale_voltage' : scale_voltage,
+    'scale_space' : scale_space,
+    'scale_time' : scale_time,
+    'scale_concentration' : scale_concentration,
+    'scale_diffusion' : scale_diffusion,
+    'scale_charge' : scale_charge,
+    'scale_current' : scale_current,
+    'scale_resistance' : scale_resistance,
+    'scale_capacitance' : scale_capacitance,
+}
+
 params1 = {  # standard parameter set
      # constants
-        'const_k_B': const_k_B,
-        'const_e' : const_e,
-        'const_N_A' : const_N_A,  
-        'const_z_Na' : const_z_Na,
-        'const_z_K' : const_z_K,
-        'const_z_Cl' : const_z_Cl, 
-        'const_z_background' : const_z_background,
+    'const_k_B': const_k_B,
+    'const_e' : const_e,
+    'const_N_A' : const_N_A,  
+    'const_z_Na' : const_z_Na,
+    'const_z_K' : const_z_K,
+    'const_z_Cl' : const_z_Cl, 
+    'const_z_background' : const_z_background,
 
-        # multiplicative scaling factors to make equations dimensionless
-        'scale_voltage' : scale_voltage,
-        'scale_space' : scale_space,
-        'scale_time' : scale_time,
-        'scale_concentration' : scale_concentration,
-        'scale_diffusion' : scale_diffusion,
-        'scale_charge' : scale_charge,
-        'scale_current' : scale_current,
-        'scale_resistance' : scale_resistance,
-        'scale_capacitance' : scale_capacitance,
-
-        # scaled constants
-        'const_q' : const_e * scale_charge,
-        'const_k' : const_k_B / scale_time**2. * scale_space**2.,
-
-        # spine parameters, all set in SI-units and then made unit-less by scaling factors
-        'const_D_Na' : const_D_Na * scale_diffusion, 
-        'const_D_K' : const_D_K * scale_diffusion,  
-        'const_D_Cl' : const_D_Cl * scale_diffusion,  
-        'const_r_m_Na' : const_r_m_Na * scale_resistance * scale_space**2, 
-        'const_r_m_K' : const_r_m_K * scale_resistance * scale_space**2, 
-        'const_r_m_Cl' : const_r_m_Cl * scale_resistance * scale_space**2, 
-        'const_c_m' : const_c_m * scale_capacitance/scale_space**2, 
-        'const_T' : const_T,  
-        'const_phi_rest' : const_phi_rest * scale_voltage, 
-        'const_c_Na_extracell' : const_c_Na_extracell * scale_concentration,  
-        'const_c_K_extracell' :  const_c_K_extracell * scale_concentration, 
-        'const_c_Cl_extracell' : const_c_Cl_extracell * scale_concentration, 
-        'const_c_Na_rest' : const_c_Na_rest * scale_concentration, 
-        'const_c_K_rest' : const_c_K_rest * scale_concentration,  
-        'const_c_Cl_rest' : const_c_Cl_rest * scale_concentration, 
-        'const_driving_voltage' : const_driving_voltage * scale_voltage,
+    # spine parameters, all set in SI-units
+    'const_D_Na' : const_D_Na, 
+    'const_D_K' : const_D_K,  
+    'const_D_Cl' : const_D_Cl,  
+    'const_r_m_Na' : const_r_m_Na, 
+    'const_r_m_K' : const_r_m_K, 
+    'const_r_m_Cl' : const_r_m_Cl, 
+    'const_c_m' : const_c_m, 
+    'const_T' : const_T,  
+    'const_phi_rest' : const_phi_rest, 
+    'const_c_Na_extracell' : const_c_Na_extracell,  
+    'const_c_K_extracell' :  const_c_K_extracell, 
+    'const_c_Cl_extracell' : const_c_Cl_extracell, 
+    'const_c_Na_rest' : const_c_Na_rest, 
+    'const_c_K_rest' : const_c_K_rest,  
+    'const_c_Cl_rest' : const_c_Cl_rest, 
+    'const_driving_voltage' : const_driving_voltage,
     }
 
 parameter_sets = {# contains all parameter sets as dictionnaries
-    'standard' : params1
+    'standard' : params1,
     }
+
+scalings = {
+    'standard': scaling1,
+}
