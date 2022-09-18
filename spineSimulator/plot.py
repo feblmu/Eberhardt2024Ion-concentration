@@ -66,6 +66,7 @@ def load_results(file_name):
         'c_Na': np.array([np.frombuffer(f['c_Na'+str(ti)]) for ti in range(len(t))]),
         'c_K': np.array([np.frombuffer(f['c_K'+str(ti)]) for ti in range(len(t))]),
         'c_Cl': np.array([np.frombuffer(f['c_Cl'+str(ti)]) for ti in range(len(t))]),
+        # 'parameters': f[b'parameters']
     }
     
     f.close()
@@ -131,6 +132,21 @@ def ax_electroneutrality_head(fig, pos, file_name):
     c_total = c_Na - c_Cl + c_K
     
     ax.plot(t, c_total[:,3])
+    
+def ax_electroneutrality_main_axis(fig, pos, file_name, t_i):
+    ax = fig.add_axes(pos)
+    
+    results = load_results(file_name)
+    x = results['x']
+    t = results['t']
+    phi = results['phi']
+    c_Na = results['c_Na']
+    c_K = results['c_K']
+    c_Cl = results['c_Cl']
+    
+    c_total = c_Na - c_Cl + c_K
+    
+    ax.plot(x, c_total[t_i,:])
 
 def surface(fig, pos, x_grid, t_grid, var):
 
