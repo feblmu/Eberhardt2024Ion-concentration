@@ -11,7 +11,7 @@ import time
 print('Running Python interpreter {_}.'.format(_=sys.executable))
 
 # x-grid
-L = 1.e-6
+L = 1.5e-6
 nh, nhnj, nn, nndj, nd = 4, 1, 4, 1, 4
 nx = nh + nhnj + nn + nndj + nd
 x = np.linspace(0,L,nx)
@@ -32,16 +32,19 @@ a[nh+nhnj+nn+nndj: nh+nhnj+nn+nndj+nd] = ad
 a[nh:nh+nhnj]= np.linspace(ah, an, nhnj+2, endpoint=True)[1:-1]
 a[nh+nhnj+nn : nh+nhnj+nn+nndj] = np.linspace(an, ad, nndj+2, endpoint=True)[1:-1]
 
-results_file = './../simulation_results/experiment_2.pcl'
+results_file = './../simulation_results/experiment_2'
 write_interval = 5.e-5
 spine = FiniteDifferenceSolver.FiniteDifferenceSolver(
     t,x,a,
     bnds=[[0., 10.e-3,],
-          [1500.e-12, 1500.e-12],
-          [-0.07, -0.065,]],
-    input_type='ion-channel',
+          [250.e-12, 0.e-12],
+          [-0.07, -0.07,]],
+    input_type='const',
     file_name=results_file, 
-    write_interval=write_interval)
+    write_interval=write_interval,
+    parameter_set = 'equal_diffusion')
+    
+    
 start = time.time()
 spine.solve()
 end = time.time()

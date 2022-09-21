@@ -7,6 +7,118 @@ from matplotlib.ticker import LinearLocator
 import numpy as np
 import dbm.dumb as dbm
 
+#########################################
+
+# FILE
+
+#########################################
+
+def load_results(file_name):
+    f = dbm.open('./../../simulation_results/' + file_name, 'r')
+    t = np.frombuffer(f['t'])
+    results = {
+        't': t,
+        'x': np.frombuffer(f['x']),
+        'a': np.frombuffer(f['radius']),
+        'phi': np.array([np.frombuffer(f['phi'+str(ti)]) for ti in range(len(t))]),
+        'c_Na': np.array([np.frombuffer(f['c_Na'+str(ti)]) for ti in range(len(t))]),
+        'c_K': np.array([np.frombuffer(f['c_K'+str(ti)]) for ti in range(len(t))]),
+        'c_Cl': np.array([np.frombuffer(f['c_Cl'+str(ti)]) for ti in range(len(t))]),
+        'parameters': f[b'parameters']
+    }
+    
+    f.close()
+    
+    return results
+
+#########################################
+
+# ANALYSIS
+
+#########################################
+
+def compute_resistivity(c, params, ion=''):
+    """
+    ion: can be "Na", "K" or "Cl"
+    """
+    V_T = params['const_k_B'] * params['const_T'] / params['const_e']
+    f = params['const_D_'+ion] * params['const_e'] * params['const_z_'+ion]**2 * c * params['const_N_A']
+    r = V_T / f
+    return r
+
+def compute_resistance(r, a, dx):
+    R = r * dx / np.pi / np.square(a)
+    return R
+    
+def compute_conductivity(r, a, dx):
+    g_ij = (np.square(a[1:]) / r[:,1:] + np.square(a[:-1]) / r[:,:-1]) * np.pi / 2. / dx
+    return g_ij
+    
+def compute_chemical_current(c, a, dx, ion):
+    i_c = (- params['const_D_'+ion] * params['const_e'] * params['const_z_'+ion] * np.pi* 
+          (np.square(a[1:]) + np.square(a[:-1])) /2. * 
+          params['const_N_A']*(c[:, 1:] - c[:,:-1])/ dx)
+    return i_c
+
+def compute_electrical_current(g_ij, phi):
+    i_e = - g_ij * (phi[:, 1:] - phi[:,:-1])
+    return i_e
+    
+def compute_chemical_potential(c, params):
+    mu = params['const_k_B'] * params['const_T'] * np.log(c_Na / params['const_c_Na_rest'])
+    return mu
+
+
+#########################################
+
+# VISUALIZATION
+
+#########################################
+
+def ax_surface(fig, pos, x_grid, t_grid, var, z_label=''):
+
+    ax = fig.add_axes(pos, projection="3d")
+    
+    surf = ax.plot_surface(x_grid, t_grid, var, cmap=cm.summer,
+                       linewidth=0, antialiased=False)
+                       
+    # Customize the z axis.
+    #ax.set_zlim(-1.01, 1.01)
+    #ax.zaxis.set_major_locator(LinearLocator(10))
+    # A StrMethodFormatter is used automatically
+    #ax.zaxis.set_major_formatter('{x:.02f}')
+
+    # Add a color bar which maps values to colors.
+    ## fig.colorbar(surf, shrink=0.5, aspect=5)
+    
+    ax.set_xlabel('x')
+    ax.set_ylabel('t')
+    ax.set_zlabel(z_label)
+
+def figure_space_time_summary(file_name):
+    results = load_results(file_name)
+    t = results['t']
+    x = results['x']
+    phi = results['phi']
+    c_Na = results['c_Na']
+    c_K = results['c_K']
+    c_Cl = results['c_Cl']
+    
+    xx, tt = np.meshgrid(x,t)
+
+    fig=plt.figure(dpi=300, facecolor='white', figsize=(5,4))
+    fig.suptitle(file_name)
+
+    wx, wy = 0.3, 0.3
+    pos1 = [0.1, 0.6,wx, wy]
+    pos2 = [0.6, 0.6, wx, wy]
+    pos3 = [0.1, 0.1, wx, wy]
+    pos4 = [0.6, 0.1, wx, wy]
+    
+    ax_surface(fig, pos1, xx, tt, phi, z_label='Phi')
+    ax_surface(fig, pos2, xx, tt, c_Na, z_label='cNa')
+    ax_surface(fig, pos3, xx, tt, c_K, z_label='cK')
+    ax_surface(fig, pos4, xx, tt, c_Cl, z_label='cCl')
 
 def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195]):
     results = load_results(file_name)
@@ -54,25 +166,6 @@ def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195])
     
     ax1.legend(fontsize=8, loc=(.6,.6))
     plt.show()
-
-def load_results(file_name):
-    f = dbm.open('./../../simulation_results/' + file_name, 'r')
-    t = np.frombuffer(f['t'])
-    results = {
-        't': t,
-        'x': np.frombuffer(f['x']),
-        'a': np.frombuffer(f['radius']),
-        'phi': np.array([np.frombuffer(f['phi'+str(ti)]) for ti in range(len(t))]),
-        'c_Na': np.array([np.frombuffer(f['c_Na'+str(ti)]) for ti in range(len(t))]),
-        'c_K': np.array([np.frombuffer(f['c_K'+str(ti)]) for ti in range(len(t))]),
-        'c_Cl': np.array([np.frombuffer(f['c_Cl'+str(ti)]) for ti in range(len(t))]),
-        # 'parameters': f[b'parameters']
-    }
-    
-    f.close()
-    
-    return results
-
 
 def figure_head_overview(file_name):
     results = load_results(file_name)
@@ -147,25 +240,6 @@ def ax_electroneutrality_main_axis(fig, pos, file_name, t_i):
     c_total = c_Na - c_Cl + c_K
     
     ax.plot(x, c_total[t_i,:])
-
-def surface(fig, pos, x_grid, t_grid, var):
-
-    ax = fig.add_axes(pos, projection="3d")
-    
-    surf = ax.plot_surface(x_grid, t_grid, var, cmap=cm.summer,
-                       linewidth=0, antialiased=False)
-                       
-    # Customize the z axis.
-    #ax.set_zlim(-1.01, 1.01)
-    #ax.zaxis.set_major_locator(LinearLocator(10))
-    # A StrMethodFormatter is used automatically
-    #ax.zaxis.set_major_formatter('{x:.02f}')
-
-    # Add a color bar which maps values to colors.
-    ## fig.colorbar(surf, shrink=0.5, aspect=5)
-    
-    ax.set_xlabel('x')
-    ax.set_ylabel('t')
     
 def x_grid_on_spine(fig, pos, x, a):
     
