@@ -51,12 +51,16 @@ def compute_resistance(r, a, dx):
     return R
     
 def compute_conductivity(r, a, dx):
-    g_ij = (np.square(a[1:]) / r[:,1:] + np.square(a[:-1]) / r[:,:-1]) * np.pi / 2. / dx
+    #g_ij = (np.square(a[1:]) / r[:,1:] + np.square(a[:-1]) / r[:,:-1]) * np.pi / 2. / dx
+    g_ij = 2. * (np.square(a[1:]) * np.square(a[:-1])) / (r[:,1:]*np.square(a[1:])+r[:,:-1]*np.square(a[:-1])) / dx * np.pi
     return g_ij
     
-def compute_chemical_current(c, a, dx, ion):
+def compute_chemical_current(c, a, dx, params, ion):
+    #i_c = (- params['const_D_'+ion] * params['const_e'] * params['const_z_'+ion] * np.pi* 
+    #      (np.square(a[1:]) + np.square(a[:-1])) /2. * 
+    #      params['const_N_A']*(c[:, 1:] - c[:,:-1])/ dx)
     i_c = (- params['const_D_'+ion] * params['const_e'] * params['const_z_'+ion] * np.pi* 
-          (np.square(a[1:]) + np.square(a[:-1])) /2. * 
+          2.* (np.square(a[1:]) * np.square(a[:-1])) / (np.square(a[1:]) + np.square(a[:-1]))  * 
           params['const_N_A']*(c[:, 1:] - c[:,:-1])/ dx)
     return i_c
 
@@ -65,7 +69,7 @@ def compute_electrical_current(g_ij, phi):
     return i_e
     
 def compute_chemical_potential(c, params):
-    mu = params['const_k_B'] * params['const_T'] * np.log(c_Na / params['const_c_Na_rest'])
+    mu = params['const_k_B'] * params['const_T'] * np.log(c / params['const_c_Na_rest'])
     return mu
 
 

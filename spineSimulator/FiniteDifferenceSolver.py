@@ -264,11 +264,17 @@ class FiniteDifferenceSolver:
         t_i: time index
         coeff: funciton or method
         """
-        outflow =  (coeff[2:] + coeff[1:-1]) / 2. * (var[2:] - var[1:-1]) / self.delta_x**2
-        inflow = (coeff[0:-2] + coeff[1:-1]) / 2.  * (var[1:-1] - var[:-2]) / self.delta_x**2
+        #outflow =  (coeff[2:] + coeff[1:-1]) / 2. * (var[2:] - var[1:-1]) / self.delta_x**2
+        #inflow = (coeff[0:-2] + coeff[1:-1]) / 2.  * (var[1:-1] - var[:-2]) / self.delta_x**2
+        #dndt = outflow - inflow
+        
+        g = 2.* (coeff[1:] * coeff[:-1]) / (coeff[1:] + coeff[:-1])
+        dvdx = (var[1:] - var[:-1]) / self.delta_x
+        current = g * dvdx
+        dndt = (current[1:] - current[:-1] ) / self.delta_x
         #outflow = 2.* (coeff[2:] * coeff[1:-1]) / (coeff[2:] + coeff[1:-1]) * (var[2:] - var[1:-1]) / self.delta_x**2
         #inflow = 2.* (coeff[0:-2] * coeff[1:-1]) / (coeff[0:-2] + coeff[1:-1]) * (var[1:-1] - var[:-2]) / self.delta_x**2
-        return outflow - inflow
+        return dndt
         
     def solve(self, method='explicit'):
         """

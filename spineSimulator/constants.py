@@ -1,6 +1,7 @@
 import copy
-
+################################
 # natural constants
+################################
 const_k_B = 1.381e-23  # Boltzmann constant [k_B] = m^2 kg s^-2 K^-1
 const_e = 1.602e-19  # elementary charge [e] = C
 const_N_A = 6.022e23 # Avogadro constant [N_A] = mol^-1
@@ -9,7 +10,9 @@ const_z_K = +1 # charge number of potassium
 const_z_Cl = -1  # charge number of chloride
 const_z_background = -1  # charge number of background concentrations
 
+################################
 # multiplicative scaling factors to make equations dimensionless
+################################
 scale_voltage = 1.e3  # 1./10 mV
 scale_space = 1.e8 # 1./10 nm
 scale_time = 1.e4 #  1./0.1 ms
@@ -22,7 +25,9 @@ scale_capacitance = scale_charge / scale_voltage #scale_current**2 * scale_time*
 # scale_mass = 1. # maps kg -> not needed
 # scale_temperature = 1.  # effectively no scaling just dimensionless
 
-# spine parameters, all set in SI-units and then made unit-less by scaling factors
+################################
+# spine constants, all set in SI-units and then made unit-less by scaling factors
+################################
 const_D_Na = 0.6500e-9  # Diffusion Sodium [D_Na] = m^2 s^-1
 const_D_K = 1.000e-9   # Diffusion potassium [D_K] = m^2 s^-1
 const_D_Cl = 1.0000e-9  # Diffusion chloride [D_Cl] = m^2 s^-1
