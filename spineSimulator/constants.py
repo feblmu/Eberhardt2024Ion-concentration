@@ -48,6 +48,8 @@ const_c_Cl_rest = 10.  # intracell. sodium concentration at rest
 # for membrane capacitance see: https://bionumbers.hms.harvard.edu/bionumber.aspx?&id:110759
 # membrane resistance see dyan & abbott p. 207
 
+##############################################
+
 scaling1 = {  
     # multiplicative scaling factors to make equations dimensionless
     'scale_voltage' : scale_voltage,
@@ -60,6 +62,8 @@ scaling1 = {
     'scale_resistance' : scale_resistance,
     'scale_capacitance' : scale_capacitance,
 }
+
+##############################################
 
 params1 = {  # standard parameter set
      # constants
@@ -93,11 +97,22 @@ params1 = {  # standard parameter set
 params2 = copy.copy(params1)
 params2['const_D_Na'] = const_D_K
 
+params3 = copy.copy(params1)
+params3['const_D_Na'] = 0.6500e-9
+params3['const_D_K'] = 0.6500e-9
+params3['const_D_Cl'] = 0.6500e-9
+params3['const_c_Na_rest'] = 150.
+params3['const_c_K_rest'] = 0.
+params3['const_c_Cl_rest'] = 150. 
+
+######################################################
+
 parameter_sets = {# contains all parameter sets as dictionnaries
     'standard' : params1,
     'equal_diffusion': params2,
+    'lagache': params3,
     }
-
+    
 scalings = {
     'standard': scaling1,
 }
