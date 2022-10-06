@@ -68,9 +68,9 @@ def compute_electrical_current(g_ij, phi):
     i_e = - g_ij * (phi[:, 1:] - phi[:,:-1])
     return i_e
     
-def compute_chemical_potential(c, params):
-    mu = params['const_k_B'] * params['const_T'] * np.log(c / params['const_c_Na_rest'])
-    return mu
+#def compute_chemical_potential(c, params):
+#    mu = params['const_k_B'] * params['const_T'] * np.log(c / params['const_c_Na_rest'])
+#    return mu
 
 
 #########################################
