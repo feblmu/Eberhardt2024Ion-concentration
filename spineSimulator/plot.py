@@ -31,6 +31,100 @@ def load_results(file_name):
     
     return results
 
+def get_results_summary(file_id):
+    """
+    load main results of a partiuclar spine setting
+    and compute relevant parameters for analysis
+    """
+    # load data from files
+    from constants import parameter_sets
+    results = load_results(file_id)
+    
+    x = results['x']
+    t = results['t']
+    a = results['a']
+    phi = results['phi']
+    c_Na = results['c_Na']
+    c_K = results['c_K']
+    c_Cl = results['c_Cl']
+
+    param_set = results['parameters'].decode("utf-8") # database contains a bytestring which needs to be converted to str, e.g. 'standard'
+    params = parameter_sets[param_set]
+
+    dx = x[1] - x[0]
+    dt = t[1] - t[0]
+
+    #####################################
+    r_Na = compute_resistivity(c_Na, params, 'Na')
+    R_Na = compute_resistance(r_Na, a, dx)
+    g_Na_ij = compute_conductivity(r_Na, a, dx)
+
+    r_K = compute_resistivity(c_K, params, 'K')
+    R_K = compute_resistance(r_K, a, dx)
+    g_K_ij = compute_conductivity(r_K, a, dx)
+
+    r_Cl = compute_resistivity(c_Cl, params, 'Cl')
+    R_Cl = compute_resistance(r_Cl, a, dx)
+    g_Cl_ij = compute_conductivity(r_Cl, a, dx)
+
+    r_e = 1./ ( 1./r_Na + 1./r_K + 1./r_Cl )
+    R_e = compute_resistance(r_e, a, dx)
+    g_ij = compute_conductivity(r_e, a, dx)
+
+    i_c_Na = compute_chemical_current(c_Na, a, dx, params, 'Na')
+    i_c_K = compute_chemical_current(c_K, a, dx, params, 'K')
+    i_c_Cl = compute_chemical_current(c_Cl, a, dx, params, 'Cl')
+
+    i_e_Na = compute_electrical_current(g_Na_ij, phi)
+    i_e_K = compute_electrical_current(g_K_ij, phi)
+    i_e_Cl = compute_electrical_current(g_Cl_ij, phi)
+
+    # chemical potentials
+    #mu_Na = compute_chemical_potential(c_Na, params)
+    #mu_K = compute_chemical_potential(c_K, params)
+    #mu_Cl = compute_chemical_potential(c_Cl, params)
+
+    i_e = i_e_Na + i_e_K + i_e_Cl
+
+    i_c = i_c_Na + i_c_K + i_c_Cl
+
+    i_total = i_e + i_c
+    
+    return (
+        x,
+        a,
+        t,
+        phi,
+        c_Na,
+        c_K,
+        c_Cl,
+        param_set,
+        params,
+        dx,
+        dt,
+        r_Na,
+        R_Na,
+        g_Na_ij,
+        r_K,
+        R_K,
+        g_K_ij,
+        r_Cl,
+        R_Cl,
+        g_Cl_ij,
+        r_e,
+        R_e,
+        g_ij,
+        i_c_Na,
+        i_c_K,
+        i_c_Cl,
+        i_e_Na,
+        i_e_K,
+        i_e_Cl,
+        i_e,
+        i_c,
+        i_total,
+    )
+
 #########################################
 
 # ANALYSIS
@@ -79,11 +173,17 @@ def compute_electrical_current(g_ij, phi):
 
 #########################################
 
-def ax_surface(fig, pos, x_grid, t_grid, var, z_label=''):
+def ax_surface(fig, pos, x_grid, t_grid, var, z_label='', layout='standard'):
 
     ax = fig.add_axes(pos, projection="3d")
     
-    surf = ax.plot_surface(x_grid, t_grid, var, cmap=cm.summer,
+    scale_space = 1.e9
+    scale_time = 1.e3
+    if layout == 'Phi':
+        scale_var = 1.e3
+    else: scale_var = 1.
+    
+    surf = ax.plot_surface(x_grid*scale_space, t_grid*scale_time, var*scale_var, cmap=cm.summer,
                        linewidth=0, antialiased=False)
                        
     # Customize the z axis.
@@ -95,9 +195,13 @@ def ax_surface(fig, pos, x_grid, t_grid, var, z_label=''):
     # Add a color bar which maps values to colors.
     ## fig.colorbar(surf, shrink=0.5, aspect=5)
     
-    ax.set_xlabel('x')
-    ax.set_ylabel('t')
-    ax.set_zlabel(z_label)
+    ax.set_xlabel('z [nm]', labelpad=-10)
+    ax.set_ylabel('t [ms]', labelpad=-10)
+    ax.set_zlabel(z_label, rotation=90, labelpad=0)
+    
+    ax.tick_params(axis='x', which='major', pad=-5)
+    ax.tick_params(axis='y', which='major', pad=-5)
+    ax.tick_params(axis='z', which='major', pad=0)
 
 def figure_space_time_summary(file_name):
     results = load_results(file_name)
@@ -111,18 +215,18 @@ def figure_space_time_summary(file_name):
     xx, tt = np.meshgrid(x,t)
 
     fig=plt.figure(dpi=300, facecolor='white', figsize=(5,4))
-    fig.suptitle(file_name)
+    #fig.suptitle(file_name)
 
-    wx, wy = 0.3, 0.3
-    pos1 = [0.1, 0.6,wx, wy]
-    pos2 = [0.6, 0.6, wx, wy]
-    pos3 = [0.1, 0.1, wx, wy]
+    wx, wy = 0.35, 0.35
+    pos1 = [0.15, 0.55,wx, wy]
+    pos2 = [0.6, 0.55, wx, wy]
+    pos3 = [0.15, 0.1, wx, wy]
     pos4 = [0.6, 0.1, wx, wy]
     
-    ax_surface(fig, pos1, xx, tt, phi, z_label='Phi')
-    ax_surface(fig, pos2, xx, tt, c_Na, z_label='cNa')
-    ax_surface(fig, pos3, xx, tt, c_K, z_label='cK')
-    ax_surface(fig, pos4, xx, tt, c_Cl, z_label='cCl')
+    ax_surface(fig, pos1, xx, tt, phi, z_label=r'$\Phi$ [mV]', layout='Phi')
+    ax_surface(fig, pos2, xx, tt, c_Na, z_label=r'$c_{Na}$')
+    ax_surface(fig, pos3, xx, tt, c_K, z_label=r'$c_K$ [mmol]')
+    ax_surface(fig, pos4, xx, tt, c_Cl, z_label=r'$c_{Cl}$ [mmol]')
 
 def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195]):
     results = load_results(file_name)
@@ -137,9 +241,9 @@ def figure_main_axes_overview(file_name, times=[0.0005, 0.0095, 0.0105, 0.0195])
     fig.suptitle(file_name)
 
     wx, wy = 0.3, 0.3
-    pos1 = [0.1, 0.6,wx, wy]
+    pos1 = [0.15, 0.6,wx, wy]
     pos2 = [0.6, 0.6, wx, wy]
-    pos3 = [0.1, 0.1, wx, wy]
+    pos3 = [0.15, 0.1, wx, wy]
     pos4 = [0.6, 0.1, wx, wy]
 
     ax1 = fig.add_axes(pos1)
@@ -260,9 +364,52 @@ def x_grid_on_spine(fig, pos, x, a):
     
     # scale axsis
     ax.set_xticklabels([int(round(xi,1)) for xi in ax.get_xticks() * 1.e9])
-    ax.set_xlabel('length [$nm$]')
+    ax.set_xlabel('z - main axis [$nm$]')
     ax.set_yticklabels([int(round(yi,1)) for yi in ax.get_yticks() * 1.e9])
-    ax.set_ylabel('radius [$nm$]')
+    ax.set_ylabel('a - radius [$nm$]')
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+
+    
+def ax_extended_cable(fig, pos):
+    ax = fig.add_axes(pos)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    l = 0.6
+    h = 0.4
+
+    ax.fill_between([-l/2., l/2.],[-h/2.,-h/2.], [h/2., h/2.], facecolor='lightgrey', edgecolor='gray')
+    ax.plot([-l/2., l/2.],[-h/2.,-h/2.], 'k-', lw=2.)
+    ax.plot([-l/2., l/2.],[h/2.,h/2.], 'k-', lw=2.)
+
+
+    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \mu_k}{\partial x }|_{left}$", fontsize=8,
+                xy=(-l/2*0.7, -h/2*0.7), xytext=(-l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+
+    ax.annotate(r"$-\frac{\pi a^2}{r_e}\frac{\partial \Phi}{\partial x }|_{left}$", 
+                xy=(-l/2*0.7, h/2*0.7), xytext=(-l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+
+    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \Phi}{\partial x }|_{right}$", 
+                xy=(l/2*0.7, h/2*0.7), xytext=(l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+
+    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \mu_k}{\partial x }|_{right}$", 
+                xy=(l/2*0.7, -h/2*0.7), xytext=(l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+
+    ax.annotate(r"$2 \pi a \Delta x c_m \frac{\partial \Phi}{\partial t }$", 
+                xy=(0., -h/2.*0.7), xytext=(0., -0.8*h), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+
+    #ax.annotate(r"$2 \pi a \Delta x ~ i_{AMPA}$",
+    #            xy=(0., h/2.*0.7), xytext=(0., 0.8*h), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+
+    ax.annotate(r"$z - main~axis$",
+                xy=(-0.3, 0.8*h), xytext=(0., 0.8*h), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+
+    ax.text(0., 0.05, '$\Phi, \mu_k$', va='center', ha='center', fontsize=8,)
+    ax.text(0., -0.05, '$k \in \{{Na^+},{K^+},{Cl^{-}}\}$', va='center', ha='center', fontsize=8,)
+
+
+    ax.set_xlim([-l,l])
+    ax.set_ylim([-h,h])

@@ -91,7 +91,7 @@ class FiniteDifferenceSolver:
         self.update_electrical_resistance()
 
         # apply boundary conditions
-        # ATTENTION appliy boundary conditions after all other variable are computed for the current time step
+        # ATTENTION apply boundary conditions after all other variable are computed for the current time step
         # Neumann boundary at x=0 to model input current, gets computed from input conductance
         # Dirichlet boundary; set potential in dendrite at x=x_max to model large reservoir in dendrites and bAPs
         self.new_bnd_times_as_index = [np.sum( (t_ * self.scale_time) >  self.t) for t_ in bnds[0]]  # list of time points as time indices when to apply new boundary conditions
@@ -323,6 +323,7 @@ class FiniteDifferenceSolver:
         implementation of explicit solver
         """
         
+        """ ## instead of the cable equation for the potential a capacitor rule is used to updated the potential
         delta_phi = (
             self.gamma()[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e))
             + 
@@ -332,7 +333,7 @@ class FiniteDifferenceSolver:
             +
             self.gamma()[1:-1] * self.d2fdx2(self.c_Cl, self.h_k(self.const_z_Cl * self.const_D_Cl))
             ) 
-
+        """ 
         delta_c_Na = (
             self.delta_k(self.const_z_Na)[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e_Na))
             + 
@@ -356,24 +357,31 @@ class FiniteDifferenceSolver:
         self.c_K[1:-1]  = self.c_K[1:-1]  + self.delta_t * delta_c_K
         self.c_Cl[1:-1] = self.c_Cl[1:-1] + self.delta_t * delta_c_Cl
         
+        """ not needed if capacitor update is used for the potential
         self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi    
         """
-        self.phi = self.const_q * (
-            self.const_z_background * self.c_background + 
-            self.const_z_Na * self.c_Na +
-            self.const_z_K * self.c_K + 
-            self.const_z_Cl * self.c_Cl
-        ) / self.const_c_m * self.a / 2.
-        """
+        
+        self.phi[1:-1] = self.const_q * (
+            self.const_z_background * self.c_background[1:-1] + 
+            self.const_z_Na * self.c_Na[1:-1] +
+            self.const_z_K * self.c_K[1:-1] + 
+            self.const_z_Cl * self.c_Cl[1:-1]
+        ) / self.const_c_m * self.a[1:-1] / 2.
+        
+        # set variables at boundaries before updating the resistance
+        # this will correctly update resistance values at the bnd.
+        # boundary contidions
+        self.apply_boundary_conditions()
+        
         # update other variables to t+1
         self.update_electrical_resistance()
 
-        # boundary contidions
-        self.apply_boundary_conditions()
+        
         
     def electric_potential_neumann_boundary(self,):
         """
         compute neumann boundary condition for the electrical potential
+        TODO: can be removed as this bnd induces currents of all ion-types an synapse
         """
         
         dPhi_dx = - self.get_input_current() * self.r_e[1] / np.pi / self.a[1]**2
