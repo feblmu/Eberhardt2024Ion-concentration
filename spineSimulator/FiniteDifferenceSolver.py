@@ -28,7 +28,7 @@ class FiniteDifferenceSolver:
         if t[0] != 0. or x[0] != 0.:
             raise AssertionError('x and t have to start with 0')
             
-        if input_type == 'const':
+        if input_type == 'currentClamp':
             self.input_type = input_type
             self.get_input_current = self.constant_input_current
             
@@ -36,8 +36,8 @@ class FiniteDifferenceSolver:
             self.input_type = input_type
             self.get_input_current = self.variable_input_current
         else:
-            self.input_type = 'const'
-            print('ATTENTION: Input type set to "const". input_type argument must be "const" or "ion-channel".')
+            self.input_type = 'currentClamp'
+            print('ATTENTION: Input type set to "currentClamp". input_type argument must be "currentClamp" or "ion-channel".')
         
                 
         # grid scale
