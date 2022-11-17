@@ -1,6 +1,6 @@
 import numpy as np
 import dbm.dumb as dbm
-from constants import parameter_sets, scalings
+from .constants import parameter_sets, scalings
 
 class FiniteDifferenceSolver:
 
