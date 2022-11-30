@@ -5,9 +5,11 @@ from .constants import parameter_sets, scalings
 class FiniteDifferenceSolver:
 
     def __init__(self,
-        t,  # points on grid in time, has to start with 0
+        # t,  # points on grid in time, has to start with 0
         x,  # points on grid in space, has to start with 0
         a,  # radius of cylindersegment along x
+        T,  # total simulation time
+        dT, # time step
         bnds=[[0],[15.e-12],[-0.07]],  # time when to apply new bondary conditions, neumann current bundary, dirichlet bnd
         input_type='const',  # type of input current const electrod current or voltage and concentration dependent ion-channel current
         file_name = False,  # if file-name if provided dependent varibles get saved every 0.05 ms
@@ -25,8 +27,8 @@ class FiniteDifferenceSolver:
         )
         
         # TODO: improve t&x argumnets in init or shift automatically
-        if t[0] != 0. or x[0] != 0.:
-            raise AssertionError('x and t have to start with 0')
+        if x[0] != 0.:
+            raise AssertionError('x has to start with 0')
             
         if input_type == 'currentClamp':
             self.input_type = input_type
@@ -39,24 +41,24 @@ class FiniteDifferenceSolver:
             self.input_type = 'currentClamp'
             print('ATTENTION: Input type set to "currentClamp". input_type argument must be "currentClamp" or "ion-channel".')
         
+        ## self.t = t * self.scale_time # time, independent variable [t] = s
+        self.T = T * self.scale_time # total simulation time
                 
         # grid scale
         self.delta_x = (x[1] - x[0]) * self.scale_space
-        self.delta_t = (t[1] - t[0]) * self.scale_time
+        self.delta_t = dT * self.scale_time
 
         # number of grid points 
         # add two points to space grid (one left, one right) to realize boundary conditions later
         self.nx = np.size(x) + 2 # total number of points in x
-        self.nt = np.size(t) # total number of time steps
-
+        self.nt = int(self.T/self.delta_t + 1) # total number of time steps
+        
         # independent variables space and time (x, t)
         self.x = np.zeros(self.nx)
         self.x[1:-1] = x
         self.x[0] = self.x[1] + x[0] - x[1]
         self.x[-1] = self.x[-2] + x[1] - x[0]
         self.x = self.x * self.scale_space
-        
-        self.t = t * self.scale_time # time, independent variable [t] = s
         
         # current time index
         self.t_i = 0  
@@ -94,10 +96,10 @@ class FiniteDifferenceSolver:
         # ATTENTION apply boundary conditions after all other variable are computed for the current time step
         # Neumann boundary at x=0 to model input current, gets computed from input conductance
         # Dirichlet boundary; set potential in dendrite at x=x_max to model large reservoir in dendrites and bAPs
-        self.new_bnd_times_as_index = [np.sum( (t_ * self.scale_time) >  self.t) for t_ in bnds[0]]  # list of time points as time indices when to apply new boundary conditions
+        self.new_bnd_times_as_index = [int(t_ * self.scale_time / self.delta_t) for t_ in bnds[0]]  # list of time points as time indices when to apply new boundary conditions
         self.neumann_bnd_conductances = [con / self.scale_resistance for con in bnds[1]]  # list of input conductances to compute neumann boundary conditions
         self.dirichlet_bnd_potentials = [phi_bnd * self.scale_voltage for phi_bnd in bnds[2]]  # list of membrane potentials in end segment in dendrite
-
+        
         # TODO: this gets repeadted in solve() -> improve
         self.input_conductance = self.neumann_bnd_conductances[0] 
         self.phi_dendrite = self.dirichlet_bnd_potentials[0] 
@@ -114,7 +116,7 @@ class FiniteDifferenceSolver:
             print('Writing results to file every {ti} steps.'.format(ti=self.write_delta_t_i))
             print('Writing results to file every {t} seconds.'.format(t=self.write_delta_t_i/self.scale_time*self.delta_t))
             self.db = dbm.open(self.file_name, 'n')
-            self.db['t'] = (self.t[::self.write_delta_t_i]/self.scale_time).tobytes()
+            ## self.db['t'] = (self.t[::self.write_delta_t_i]/self.scale_time).tobytes()
             self.db['x'] = (self.x/self.scale_space).tobytes()
             self.db['radius'] = (self.a/self.scale_space).tobytes()
             self.db['parameters'] = self.parameter_set
@@ -214,7 +216,9 @@ class FiniteDifferenceSolver:
         variable[-1] = yD
     
     def write_results(self):
-        print('Writing results at {t} ms'.format(t=(self.t[self.t_i]/self.scale_time*1000)))
+        t = self.delta_t * self.t_i / self.scale_time
+        print('Writing results at {t} ms'.format(t=t*1000.))
+        self.db['t'+str(self.n_writes)] = str(t)
         self.db['phi'+str(self.n_writes)] = (self.phi/self.scale_voltage).tobytes()
         self.db['c_Na'+str(self.n_writes)] = (self.c_Na/self.scale_concentration).tobytes()
         self.db['c_K'+str(self.n_writes)] = (self.c_K/self.scale_concentration).tobytes()
@@ -297,7 +301,7 @@ class FiniteDifferenceSolver:
         
         
         change_bnd_indices = self.new_bnd_times_as_index + [self.nt]
-        
+        print(change_bnd_indices, '##')
         for i, t_i_start in enumerate(change_bnd_indices[:-1]):
             # apply new boudary conditions
             self.input_conductance = self.neumann_bnd_conductances[i] 
@@ -316,6 +320,7 @@ class FiniteDifferenceSolver:
                         self.write_results()
             
         if self.file_name!=False:
+            self.db['N'] = str(self.t_i // self.write_delta_t_i + 1)
             self.db.close()
         
     def explicit_step(self):
