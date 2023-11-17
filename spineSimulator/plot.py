@@ -15,21 +15,21 @@ import dbm.dumb as dbm
 
 def load_results(file_name):
     f = dbm.open('./../../simulation_results/' + file_name, 'r')
-    t = np.frombuffer(f['t'])
+    l = int(f['N'])
     results = {
-        't': t,
+        't': np.array([ float(f['t'+str(ti)]) for ti in range(l)]),
         'x': np.frombuffer(f['x']),
         'a': np.frombuffer(f['radius']),
-        'phi': np.array([np.frombuffer(f['phi'+str(ti)]) for ti in range(len(t))]),
-        'c_Na': np.array([np.frombuffer(f['c_Na'+str(ti)]) for ti in range(len(t))]),
-        'c_K': np.array([np.frombuffer(f['c_K'+str(ti)]) for ti in range(len(t))]),
-        'c_Cl': np.array([np.frombuffer(f['c_Cl'+str(ti)]) for ti in range(len(t))]),
+        'phi': np.array([np.frombuffer(f['phi'+str(ti)]) for ti in range(l)]),
+        'c_Na': np.array([np.frombuffer(f['c_Na'+str(ti)]) for ti in range(l)]),
+        'c_K': np.array([np.frombuffer(f['c_K'+str(ti)]) for ti in range(l)]),
+        'c_Cl': np.array([np.frombuffer(f['c_Cl'+str(ti)]) for ti in range(l)]),
         'parameters': f[b'parameters']
     }
-    
     f.close()
     
     return results
+
 
 def get_results_summary(file_id):
     """
@@ -37,7 +37,7 @@ def get_results_summary(file_id):
     and compute relevant parameters for analysis
     """
     # load data from files
-    from constants import parameter_sets
+    from .constants import parameter_sets
     results = load_results(file_id)
     
     x = results['x']
@@ -173,7 +173,7 @@ def compute_electrical_current(g_ij, phi):
 
 #########################################
 
-def ax_surface(fig, pos, x_grid, t_grid, var, z_label='', layout='standard'):
+def ax_surface(fig, pos, x_grid, t_grid, var, z_label='', layout='standard',z_ticks=None):
 
     ax = fig.add_axes(pos, projection="3d")
     
@@ -195,13 +195,25 @@ def ax_surface(fig, pos, x_grid, t_grid, var, z_label='', layout='standard'):
     # Add a color bar which maps values to colors.
     ## fig.colorbar(surf, shrink=0.5, aspect=5)
     
-    ax.set_xlabel('z [nm]', labelpad=-10)
-    ax.set_ylabel('t [ms]', labelpad=-10)
-    ax.set_zlabel(z_label, rotation=90, labelpad=0)
+    ax.set_xlabel('x [nm]', labelpad=-10, fontsize=8)
+    ax.set_ylabel('t [ms]', labelpad=-10, fontsize=8)
+    ax.set_zlabel(z_label, rotation=90, labelpad=-62, fontsize=8)
     
-    ax.tick_params(axis='x', which='major', pad=-5)
-    ax.tick_params(axis='y', which='major', pad=-5)
-    ax.tick_params(axis='z', which='major', pad=0)
+    if z_ticks:
+        ax.set_zticks(z_ticks)
+        
+    z_ticks = ax.get_zticks()
+    z_lim = ax.get_zlim()
+    d = (np.max(var*scale_var) - np.min(var*scale_var)) * 0.1
+    ax.plot([np.max(x_grid*scale_space), np.max(x_grid*scale_space)],[0,10],[np.min(var*scale_var),np.min(var*scale_var)], 'r-', lw=5.)
+    #ax.set_zlim(z_lim)
+    #ax.set_zticks(z_ticks)
+    
+    ax.tick_params(axis='x', which='major', pad=-5, labelsize=8)
+    ax.tick_params(axis='y', which='major', pad=-5, labelsize=8)
+    ax.tick_params(axis='z', which='major', pad=-2, labelsize=8)
+    
+    
 
 def figure_space_time_summary(file_name):
     results = load_results(file_name)
@@ -349,27 +361,70 @@ def ax_electroneutrality_main_axis(fig, pos, file_name, t_i):
     
     ax.plot(x, c_total[t_i,:])
     
-def x_grid_on_spine(fig, pos, x, a):
+def x_grid_on_spine(fig, pos, x, a, label_y_axis=True, show_boundary=True, layout=1, text=''):
     
     ax = fig.add_axes(pos)
     
     delta_x = x[1] - x[0]
     
-    for xi, ai in zip(x,a):
+    # left boundary
+    xi, ai = x[0],a[0]*1.e9
+    x_tmp = np.array([xi - delta_x/2., xi + delta_x/2.])
+    a_tmp = np.array([ai, ai])
+    if layout == 1:
+        red_lw = 2.
+    elif layout == 2:
+        red_lw = 0.5
+    ax.plot([xi+ delta_x/2., xi+ delta_x/2.],[a_tmp, -a_tmp], color='firebrick', lw=red_lw)
+    if show_boundary:
+        ax.fill_between(x_tmp, a_tmp, -a_tmp, color='darkgray', edgecolor='gray', lw=.5)
+        ax.plot([xi],[0], 'ko', ms=.8,)
+        
+    
+    for xi, ai in zip(x[1:-1],a[1:-1]*1.e9):
         x_tmp = np.array([xi - delta_x/2., xi + delta_x/2.])
         a_tmp = np.array([ai, ai])
         ax.fill_between(x_tmp, a_tmp, -a_tmp, color='lightgray', edgecolor='gray', lw=.5)
-        ax.plot([xi],[0], 'ko', ms=2.,)
-    #ax.plot(x,np.zeros(len(x)), 'k-', lw=.5)
+        ax.plot([xi],[0], 'ko', ms=.8,)
+
+    # right boundary
+    xi, ai = x[-1],a[-1]*1.e9
+    x_tmp = np.array([xi - delta_x/2., xi + delta_x/2.])
+    a_tmp = np.array([ai, ai])
+    if show_boundary:
+        ax.fill_between(x_tmp, a_tmp, -a_tmp, color='darkgray', edgecolor='gray', lw=.5)
+        ax.plot([xi],[0], 'ko', ms=.8,)
     
     # scale axsis
-    ax.set_xticklabels([int(round(xi,1)) for xi in ax.get_xticks() * 1.e9])
-    ax.set_xlabel('z - main axis [$nm$]')
-    ax.set_yticklabels([int(round(yi,1)) for yi in ax.get_yticks() * 1.e9])
-    ax.set_ylabel('a - radius [$nm$]')
+    
+    ax.set_xlabel('Main axis (x) [$nm$]', fontsize=8)
+    
+    if layout == 1:
+        ax.set_ylim([-440, 440])
+    elif layout == 2:
+        ax.set_ylim([-440, 873])
+        ax.text(0,500, text, fontsize=8)
+        
+    if label_y_axis:
+        ax.set_ylabel('Radius (a) [$nm$]', fontsize=8)
+    else:
+        ax.set_yticklabels(['' for yi in ax.get_yticks() * 1.e9])
+
+
+    
+    ax.tick_params(labelsize=8)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    
+    
+    ax.set_xlim([-1.50e-07, 15.00e-07])
+    if layout == 1:
+        ax.set_xticks([0.00e+00,  2.50e-07,  5.00e-07,  7.50e-07,  1.00e-06,  1.25e-06])
+    elif layout == 2:
+        ax.set_xticks([0.00e+00, 5.00e-07,   1.00e-06, ]) 
+    ax.set_xticklabels([int(round(xi,2)) for xi in ax.get_xticks() * 1.e9])
+    
 
     
 def ax_extended_cable(fig, pos):
@@ -386,26 +441,26 @@ def ax_extended_cable(fig, pos):
     ax.plot([-l/2., l/2.],[h/2.,h/2.], 'k-', lw=2.)
 
 
-    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \mu_k}{\partial x }|_{left}$", fontsize=8,
-                xy=(-l/2*0.7, -h/2*0.7), xytext=(-l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+    anot = ax.annotate(r"$-\frac{\pi a^2}{r_{c,k}}\frac{\partial \mu_k}{\partial x }|_{left}$", fontsize=8,
+                xy=(-l/2*0.7, -h/2*0.7), xytext=(-l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center', )
 
-    ax.annotate(r"$-\frac{\pi a^2}{r_e}\frac{\partial \Phi}{\partial x }|_{left}$", 
-                xy=(-l/2*0.7, h/2*0.7), xytext=(-l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+    ax.annotate(r"$-\frac{\pi a^2}{r_e}\frac{\partial \Phi}{\partial x }|_{left}$", fontsize=8,
+                xy=(-l/2*0.7, h/2*0.7), xytext=(-l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="->"), ha='center', va='center', )
 
-    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \Phi}{\partial x }|_{right}$", 
-                xy=(l/2*0.7, h/2*0.7), xytext=(l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+    ax.annotate(r"$-\frac{\pi a^2}{r_e}\frac{\partial \Phi}{\partial x }|_{right}$", fontsize=8,
+                xy=(l/2*0.7, h/2*0.7), xytext=(l*0.8, h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center',)
 
-    ax.annotate(r"$-\frac{\pi a^2}{r_c}\frac{\partial \mu_k}{\partial x }|_{right}$", 
-                xy=(l/2*0.7, -h/2*0.7), xytext=(l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+    ax.annotate(r"$-\frac{\pi a^2}{r_{c,k}}\frac{\partial \mu_k}{\partial x }|_{right}$", fontsize=8,
+                xy=(l/2*0.7, -h/2*0.7), xytext=(l*0.8, -h/2.*0.7), arrowprops=dict(arrowstyle="<-"), ha='center', va='center',)
 
-    ax.annotate(r"$2 \pi a \Delta x c_m \frac{\partial \Phi}{\partial t }$", 
-                xy=(0., -h/2.*0.7), xytext=(0., -0.8*h), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
+    ax.annotate(r"$2 \pi a \Delta x c_m \frac{\partial \Phi}{\partial t }$", fontsize=8,
+                xy=(0., -h/2.*0.9), xytext=(0., -1.*h), arrowprops=dict(arrowstyle="->"), ha='center', va='center', )
 
     #ax.annotate(r"$2 \pi a \Delta x ~ i_{AMPA}$",
     #            xy=(0., h/2.*0.7), xytext=(0., 0.8*h), arrowprops=dict(arrowstyle="->"), ha='center', va='center')
 
-    ax.annotate(r"$z - main~axis$",
-                xy=(-0.3, 0.8*h), xytext=(0., 0.8*h), arrowprops=dict(arrowstyle="<-"), ha='center', va='center')
+    ax.annotate(r"$x - main~axis$",  fontsize=8,
+                xy=(-0.3, 0.8*h), xytext=(0., 0.8*h), arrowprops=dict(arrowstyle="<-"), ha='center', va='center', )
 
     ax.text(0., 0.05, '$\Phi, \mu_k$', va='center', ha='center', fontsize=8,)
     ax.text(0., -0.05, '$k \in \{{Na^+},{K^+},{Cl^{-}}\}$', va='center', ha='center', fontsize=8,)
@@ -413,3 +468,164 @@ def ax_extended_cable(fig, pos):
 
     ax.set_xlim([-l,l])
     ax.set_ylim([-h,h])
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+def axs_head_overview(fig, column, n_columns, file_id_list, make_y_label=True, 
+                      ylimpreset='1', show_domain=True, show_resistance=True, margin_left=0.0, text=''):
+    from simulation_parameters import simulation_parameters
+    
+    # create axes for plotting
+    dx = 0.05
+    wx = (1. - n_columns * dx - 0.5 * dx - margin_left) / n_columns
+    x_min = margin_left + dx + (wx + dx) * (column - 1)
+    x_max = x_min + wx
+    n_rows = 7
+    if not show_domain:
+        n_rows -= 1
+    if not show_resistance:
+        n_rows -= 1
+
+    dy = 0.05
+    wy = (1. - n_rows * dy - 1.3 * dy) / n_rows
+    y_min = [dy + (wy + dy) * nr for nr in range(n_rows-1,-1,-1)]
+    if not show_domain:
+        y_min = [-100] + y_min
+    else:
+        #ax1 = fig.add_axes([x_min, y_min[0], wx, wy])
+        pos1 = [x_min, y_min[0], wx, wy]
+        domain_plotted = False
+        
+    
+    all_axes = []
+    for i in range(1, len(y_min)):
+        all_axes.append(fig.add_axes([x_min, y_min[i], wx, wy]))
+    
+    ###########
+    for col, file_id in zip([ 'midnightblue','mediumseagreen', 'darkorange'],file_id_list):
+    
+        
+        (x,
+        a,
+        t,
+        phi,
+        c_Na,
+        c_K,
+        c_Cl,
+        param_set,
+        params,
+        dx,
+        dt,
+        r_Na,
+        R_Na,
+        g_Na_ij,
+        r_K,
+        R_K,
+        g_K_ij,
+        r_Cl,
+        R_Cl,
+        g_Cl_ij,
+        r_e,
+        R_e,
+        g_ij,
+        i_c_Na,
+        i_c_K,
+        i_c_Cl,
+        i_e_Na,
+        i_e_K,
+        i_e_Cl,
+        i_e,
+        i_c,
+        i_total,
+        ) = get_results_summary(file_id)
+        
+        if show_domain and not domain_plotted:
+            
+            x_grid_on_spine(fig, pos1, x,a, make_y_label, show_boundary=False, layout=2, text=text)
+            domain_plotted = True # only plot once
+            
+        
+        cum_R = np.cumsum(1./g_ij, axis=1)
+        cum_R2 = np.cumsum(R_e, axis=1)
+        import copy
+        i = copy.copy(i_e)
+        i[:,0] = i[:,1]
+        cum_R3 = np.cumsum(-(phi[:,1:]-phi[:,:-1])/ i, axis=1)
+
+        y_data = [i_total[:,1]*1.e12, phi[:,1]*1.e3, c_Na[:,1], c_K[:,1], c_Cl[:,1]]
+        for y, ax in zip(y_data, all_axes):
+            ax.plot(t*1.e3, y, color=col, lw=1)
+
+        if show_resistance == True:
+            all_axes[-1].plot(t*1.e3, cum_R[:,-1]/cum_R[0,-1], color=col, lw=1)
+
+    y_lables = [
+        r'$i$ [pA]',
+        r'$\Phi$ [mV]',
+        r'$n_{Na}$ [mmol]',
+        r'$n_K$ [mmol]',
+        r'$n_{Cl}$ [mmol]',
+        r'$R_e$ [M$\Omega$]',
+    ]
+    
+    y_lims = {'1':(
+        (0, 40),
+        (-70, -45),
+        (10, 75),
+        (80, 142),
+        (9.5, 16),
+        (0.9, 1.05),),
+              '2':(
+        (0, 40),
+        (-70, -45),
+        (10, 80),
+        (80, 142),
+        (148, 192),
+        (0.85, 1.0),   
+              )
+    }[ylimpreset]
+    y_ticks =  {'1':(
+        [0,10,20,30,40],
+        [-70,-65,-60,-55,-50,-45],   
+        [10,30,50,70],
+        [80,100,120,140],
+        [10,12,14,16],
+        (0.9,.95,1.0,1.05), 
+    ),
+                '2':(
+        [0,10,20,30,40],
+        [-70,-65,-60,-55,-50,-45],
+        [10,30,50,70],
+        [80,100,120,140],
+        [150, 170, 190],
+        (0.85, 0.9,.95,1.0), 
+                )      
+               }[ylimpreset]
+    
+    for i, ax in enumerate(all_axes):
+        ax.tick_params(labelsize=8)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        if make_y_label == True:
+            ax.set_ylabel(y_lables[i], fontsize=8)
+        else: 
+            ax.set_yticklabels([])
+            
+        ax.set_xlabel('')
+        ax.set_xticklabels([])
+        ax.set_xlim([0 , 20])
+        ax.set_xticks([0, 10, 20])
+        ax.set_ylim(y_lims[i])
+        ax.set_yticks(y_ticks[i])
+    
+    all_axes[-1].set_xlabel('time [ms]', fontsize=8)
+    all_axes[-1].set_xticklabels(all_axes[-1].get_xticks())
+
+    if show_resistance:
+        all_axes[-1].set_ylim(y_lims[-1])
+        all_axes[-1].set_yticks(y_ticks[-1])
+
+        all_axes[-1].text(1,y_lims[-1][0]+0.01,'$R_0$  = {r} M$\Omega$'.format(r=round(cum_R[0,-1]/1.e6)), fontsize=6)

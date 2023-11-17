@@ -1,5 +1,24 @@
 import numpy as np
 
+def get_a(n_h, n_hnj, n_n, n_ndj, n_d, nx, a_h, a_n, a_d=400.e-9):
+    a = np.zeros(nx)
+    a[:nh] = ah
+    a1[nh1+nhnj1:nh1+nhnj1+nn1] = an1
+    a1[nh1+nhnj1+nn1+nndj1: nh1+nhnj1+nn1+nndj1+nd1] = ad1
+    a1[nh1:nh1+nhnj1]= ah1 # np.linspace(ah, an, nhnj+2, endpoint=True)[1:-1]
+    a1[nh1+nhnj1+nn1 : nh1+nhnj1+nn1+nndj1] = an1 # np.linspace(an, ad, nndj+2, endpoint=True)[1:-1]
+    
+def get_x(L, nx):   
+    x = np.linspace(0,L,nx)
+    return x
+    
+    
+def get_t(T, timestep):
+    nt = int(T/timestep)
+    t = np.linspace(0., T, nt+1)
+    return t
+    
+
 ################################
 # simulation parameters
 ################################
@@ -22,7 +41,6 @@ L1 = 1.3e-6
 nh1, nhnj1, nn1, nndj1, nd1 = 4, 1, 4, 1, 4
 nx1 = nh1 + nhnj1 + nn1 + nndj1 + nd1
 x1 = np.linspace(0,L1,nx1)
-
 
 ################################
 # standard spine shape
@@ -50,3 +68,5 @@ simulation_parameters = {
     'test': (t2, x1, a1),
     'lagache_small' : (t1, x1, a2),
 }
+
+

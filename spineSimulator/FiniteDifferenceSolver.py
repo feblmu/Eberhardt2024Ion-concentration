@@ -160,8 +160,8 @@ class FiniteDifferenceSolver:
         self.scale_capacitance = scale['scale_capacitance']
 
         # scaled constants
-        self.const_q = self.const_e * self.scale_charge  # scaled elementary charge
-        self.const_k = self.const_k_B / self.scale_time**2. * self.scale_space**2.  # scaled boltzmann constant
+        self.const_q = self.const_e * self.scale_charge  # normalized elementary charge
+        self.const_k = self.const_k_B / self.scale_time**2. * self.scale_space**2.  # normalized boltzmann constant
 
         # spine parameters, all set in SI-units and then made unit-less by scaling factors
         self.const_D_Na = constants['const_D_Na'] * self.scale_diffusion # Diffusion Sodium 
@@ -366,6 +366,7 @@ class FiniteDifferenceSolver:
         self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi    
         """
         
+        # Phi = (Q/L) / (C_m/L) charge per unit length over Capacitance per unit length
         self.phi[1:-1] = self.const_q * (
             self.const_z_background * self.c_background[1:-1] + 
             self.const_z_Na * self.c_Na[1:-1] +

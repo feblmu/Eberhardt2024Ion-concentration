@@ -98,9 +98,9 @@ params2 = copy.copy(params1)
 params2['const_D_Na'] = const_D_K
 
 params3 = copy.copy(params1)
-params3['const_D_Na'] = 0.6500e-9
-params3['const_D_K'] = 0.6500e-9
-params3['const_D_Cl'] = 0.6500e-9
+params3['const_D_Na'] = const_D_K
+params3['const_D_K'] = const_D_K
+params3['const_D_Cl'] = const_D_K
 params3['const_c_Cl_rest'] = 150. 
 
 ######################################################
