@@ -112,7 +112,7 @@ class FiniteDifferenceSolver:
         if self.file_name!=False :
             self.write_interval = write_interval * self.scale_time
             # number of timesteps between writes
-            self.write_delta_t_i = int(self.write_interval / self.delta_t)
+            self.write_delta_t_i = max(int(self.write_interval / self.delta_t),1)
             print('Writing results to file every {ti} steps.'.format(ti=self.write_delta_t_i))
             print('Writing results to file every {t} seconds.'.format(t=self.write_delta_t_i/self.scale_time*self.delta_t))
             self.db = dbm.open(self.file_name, 'n')
@@ -261,23 +261,19 @@ class FiniteDifferenceSolver:
         z: charge number z_i of a particular ion-type i 
         """
         return 1. / (np.square(self.a) * z * self.const_q)
-        
+    
     def d2fdx2(self, var, coeff):
         """
-        class variable phi or c_k, 
-        t_i: time index
-        coeff: funciton or method
-        """
-        #outflow =  (coeff[2:] + coeff[1:-1]) / 2. * (var[2:] - var[1:-1]) / self.delta_x**2
-        #inflow = (coeff[0:-2] + coeff[1:-1]) / 2.  * (var[1:-1] - var[:-2]) / self.delta_x**2
-        #dndt = outflow - inflow
-        
-        g = 2.* (coeff[1:] * coeff[:-1]) / (coeff[1:] + coeff[:-1])
-        dvdx = (var[1:] - var[:-1]) / self.delta_x
-        current = g * dvdx
-        dndt = (current[1:] - current[:-1] ) / self.delta_x
-        #outflow = 2.* (coeff[2:] * coeff[1:-1]) / (coeff[2:] + coeff[1:-1]) * (var[2:] - var[1:-1]) / self.delta_x**2
-        #inflow = 2.* (coeff[0:-2] * coeff[1:-1]) / (coeff[0:-2] + coeff[1:-1]) * (var[1:-1] - var[:-2]) / self.delta_x**2
+        var: class variable phi or c_k, 
+        coeff: conductivity within the segments (can be electric of diffusion)
+        """        
+        # values on interface between segments -> harmonic mean
+        g = 2.* (coeff[1:] * coeff[:-1]) / (coeff[1:] + coeff[:-1]) 
+        # current between segments
+        # dvdx = (var[1:] - var[:-1]) / self.delta_x 
+        current = g * (var[1:] - var[:-1]) / self.delta_x 
+        # divergence of current -> outflow - inflow
+        dndt = (current[1:] - current[:-1] ) / self.delta_x  
         return dndt
         
     def solve(self, method='explicit'):
