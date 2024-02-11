@@ -476,7 +476,7 @@ def ax_extended_cable(fig, pos):
     
 def axs_head_overview(fig, column, n_columns, file_id_list, make_y_label=True, 
                       ylimpreset='1', show_domain=True, show_resistance=True, margin_left=0.0, text=''):
-    from simulation_parameters import simulation_parameters
+    from .simulation_parameters import simulation_parameters
     
     # create axes for plotting
     dx = 0.05

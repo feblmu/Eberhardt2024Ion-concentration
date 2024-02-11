@@ -52,13 +52,13 @@ def run(run_id):
               bc_vN_vals,
               bc_dir_vals]
 
-    t = get_t(T, delta_t)
+    nt = int(T/delta_t+1)
     x = get_x(L, nx)
     a = get_a(n_h, n_hnj, n_n, n_ndj, n_d, nx, a_h, a_n, a_d)
     ########################################################
-
+    print('simulating [seconds]: ', T )
     spine = FiniteDifferenceSolver(
-        t,x,a,
+        x,a,T,delta_t,
         bnds=boundary_conditions,
         input_type=input_type,
         file_name=results_file, 
@@ -68,7 +68,7 @@ def run(run_id):
     start = time.time()
     spine.solve()
     end = time.time()
-    print('time simulated [seconds]: ', T )
-    print('time taken {tsim} seconds for {nt} steps.'.format(nt=len(t), tsim=end-start))
+    
+    print('time taken {tsim} seconds for {nt} steps.'.format(nt=nt, tsim=end-start))
 
     ########################################################
