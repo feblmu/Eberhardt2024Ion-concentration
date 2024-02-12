@@ -323,18 +323,7 @@ class FiniteDifferenceSolver:
         """
         implementation of explicit solver
         """
-        
-        """ ## instead of the cable equation for the potential a capacitor rule is used to updated the potential
-        delta_phi = (
-            self.gamma()[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e))
-            + 
-            self.gamma()[1:-1] * self.d2fdx2(self.c_Na, self.h_k(self.const_z_Na * self.const_D_Na))
-            +
-            self.gamma()[1:-1] * self.d2fdx2(self.c_K , self.h_k(self.const_z_K * self.const_D_K))
-            +
-            self.gamma()[1:-1] * self.d2fdx2(self.c_Cl, self.h_k(self.const_z_Cl * self.const_D_Cl))
-            ) 
-        """ 
+
         delta_c_Na = (
             self.delta_k(self.const_z_Na)[1:-1] * self.d2fdx2(self.phi, self.g_k(self.r_e_Na))
             + 
@@ -358,9 +347,7 @@ class FiniteDifferenceSolver:
         self.c_K[1:-1]  = self.c_K[1:-1]  + self.delta_t * delta_c_K
         self.c_Cl[1:-1] = self.c_Cl[1:-1] + self.delta_t * delta_c_Cl
         
-        """ not needed if capacitor update is used for the potential
-        self.phi[1:-1]  = self.phi[1:-1]  + self.delta_t * delta_phi    
-        """
+
         
         # Phi = (Q/L) / (C_m/L) charge per unit length over Capacitance per unit length
         self.phi[1:-1] = self.const_q * (
